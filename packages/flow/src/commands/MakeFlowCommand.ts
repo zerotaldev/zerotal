@@ -126,6 +126,15 @@ export class MakeFlowCommand extends Command {
       pageLayoutFile !== undefined &&
       /\bshell\b/.test(readFileSync(`${pageLayoutFile}.tsx`, "utf8"));
 
+    // Every kind of page sits in the app the same way: on its base class, in its layout.
+    const frame: _PageFrame = {
+      name: componentName,
+      base,
+      layout: pageLayout,
+      layoutImport: pageLayoutImport,
+      shellLayout,
+    };
+
     let stub: string;
     let shape: _ModelShape | undefined;
     if (child) {
@@ -137,22 +146,18 @@ export class MakeFlowCommand extends Command {
       shape = model ? _readModel(model) : undefined;
       stub = model
         ? _modelCrudStub({
-            name: componentName,
+            ...frame,
             url: _urlFor(name),
             model,
             modelImport,
             shape,
-            base,
-            layout: pageLayout,
-            layoutImport: pageLayoutImport,
-            shellLayout,
             auth: _frameworkImport("@zerotal/auth"),
             styles: _appStyles(baseDir, path),
           })
-        : _crudStub(componentName, layout, layoutImport);
+        : _crudStub(frame);
     } else {
       if (model) this.warn("--model is used with --crud; it is ignored for a plain page.");
-      stub = _pageStub(componentName, layout, layoutImport);
+      stub = _pageStub(frame);
     }
 
     // The starters set `jsxImportSource` in tsconfig.json, and none of their pages carries the
@@ -305,21 +310,98 @@ function _importPath(from: string, to: string): string {
   return path.startsWith(".") ? path : `./${path}`;
 }
 
-function _layoutImport(layout: string, importPath: string): string {
-  return layout ? `import { ${layout} } from "${importPath}";\n` : "";
+/**
+ * How a generated page sits in the app: the base class it extends and the layout it renders in.
+ *
+ * In an app with the starters' `Page` base, every page extends it, names its tab with `titled()`,
+ * and renders its layout from `layout()` with the page's shell, as the starter's own pages do.
+ * Elsewhere it extends `Component` and names its layout as `static layout`. (Only `--crud
+ * --model` used to do the former: a plain or `--crud` page extended `Component`, and `--layout`
+ * wrote a `static layout` the starter's layouts do not take.)
+ */
+interface _PageFrame {
+  /** The page's class name. */
+  name: string;
+  base: _PageBase | undefined;
+  /** The layout, or empty for none. */
+  layout: string;
+  /** Its import, relative to the page. */
+  layoutImport: string;
+  /** The layout takes the page's shell, and is rendered from `layout()`. */
+  shellLayout: boolean;
 }
 
-function _layoutStatic(layout: string): string {
-  return layout ? `  static layout = ${layout};\n\n` : "";
+/** The parts of a page that its frame decides. */
+interface _FrameParts {
+  /** What the page imports from `@zerotal/flow` for its frame. */
+  flow: string[];
+  /** The layout's import line, if any. */
+  layoutImport: string[];
+  /** The base class's import line, if any. */
+  baseImport: string[];
+  /** The class it extends. */
+  extends: string;
+  /** Static members, one per line, indented. */
+  statics: string[];
+  /** The `layout()` method, indented, with a blank line before it; empty when there is none. */
+  layoutMethod: string;
+}
+
+/**
+ * What a page's frame adds to it. Every generated page has actions, so on the starters' `Page`,
+ * which renders plain HTML by default, it turns live state back on.
+ */
+function _frameParts(f: _PageFrame): _FrameParts {
+  const onPage = f.base !== undefined;
+  return {
+    flow: [...(onPage ? [] : ["Component"]), ...(f.shellLayout ? ["type HtmlNode"] : [])],
+    layoutImport: f.layout ? [`import { ${f.layout} } from "${f.layoutImport}";`] : [],
+    baseImport: onPage
+      ? [`import { Page${f.base!.titled ? ", titled" : ""} } from "${f.base!.import}";`]
+      : [],
+    extends: onPage ? "Page" : "Component",
+    statics: [
+      ...(onPage ? ["  static override interactive = true;"] : []),
+      ...(onPage && f.base!.titled
+        ? [`  static override title = titled("${_label(f.name.replace(/Page$/, ""))}");`]
+        : []),
+      ...(f.layout && !f.shellLayout ? [`  static layout = ${f.layout};`] : []),
+    ],
+    layoutMethod: f.shellLayout
+      ? `
+  override layout(page: HtmlNode): HtmlNode {
+    return <${f.layout} shell={this.shell()}>{page}</${f.layout}>;
+  }
+`
+      : "",
+  };
+}
+
+/** The page's `@zerotal/flow` import: `Component` (when it extends it), `names`, then types. */
+function _flowImport(parts: _FrameParts, names: string[]): string {
+  const base = parts.flow.filter((n) => n === "Component");
+  const types = parts.flow.filter((n) => n !== "Component");
+  return `import { ${[...base, ...names, ...types].join(", ")} } from "@zerotal/flow";`;
+}
+
+/** A page's imports: `@zerotal/flow` with `names`, then its layout and its base class. */
+function _frameImports(parts: _FrameParts, names: string[]): string {
+  return [_flowImport(parts, names), ...parts.layoutImport, ...parts.baseImport].join("\n");
+}
+
+/** The class's opening statics, followed by a blank line, or nothing. */
+function _staticsBlock(parts: _FrameParts): string {
+  return parts.statics.length ? `${parts.statics.join("\n")}\n\n` : "";
 }
 
 /** A minimal page: one exposed field, one action, a render. */
-function _pageStub(name: string, layout: string, layoutImport: string): string {
-  return `import { Component, expose } from "@zerotal/flow";
-${_layoutImport(layout, layoutImport)}
-export class ${name} extends Component {
-${_layoutStatic(layout)}  @expose count = 0;
+function _pageStub(f: _PageFrame): string {
+  const parts = _frameParts(f);
+  return `${_frameImports(parts, ["expose"])}
 
+export class ${f.name} extends ${parts.extends} {
+${_staticsBlock(parts)}  @expose count = 0;
+${parts.layoutMethod}
   @expose increment(): void {
     this.count++;
   }
@@ -327,7 +409,7 @@ ${_layoutStatic(layout)}  @expose count = 0;
   override async render() {
     return (
       <div>
-        <h1>${name}</h1>
+        <h1>${f.name}</h1>
         <p>Count: {this.count}</p>
         <button onClick={this.increment}>+</button>
       </div>
@@ -366,20 +448,22 @@ export class ${name} extends Component {
 }
 
 /** A resourceful page: list + create/edit/delete, validation, and a form. */
-function _crudStub(name: string, layout: string, layoutImport: string): string {
-  return `import { Component, expose, locked, validate } from "@zerotal/flow";
-${_layoutImport(layout, layoutImport)}
+function _crudStub(f: _PageFrame): string {
+  const parts = _frameParts(f);
+  const name = f.name;
+  return `${_frameImports(parts, ["expose", "locked", "validate"])}
+
 // TODO: swap this shape for your model type.
 interface Item {
   id: number;
   name: string;
 }
 
-export class ${name} extends Component {
-${_layoutStatic(layout)}  @locked items: Item[] = [];
+export class ${name} extends ${parts.extends} {
+${_staticsBlock(parts)}  @locked items: Item[] = [];
   @expose editingId: number | null = null;
   @expose @validate((rule) => rule.required().min(2)) name = "";
-
+${parts.layoutMethod}
   override async onMount(): Promise<void> {
     await this.load();
   }
@@ -501,18 +585,12 @@ const RESERVED = new Set([
 ]);
 
 /** What the model CRUD stub is built from. */
-interface _ModelCrudStubOptions {
-  name: string;
+interface _ModelCrudStubOptions extends _PageFrame {
   url: string;
   model: string;
   modelImport: string;
   /** The model's columns, read from its source; absent when the model was not found. */
   shape: _ModelShape | undefined;
-  base: _PageBase | undefined;
-  layout: string;
-  layoutImport: string;
-  /** The layout takes the page's shell, and is rendered from `layout()`. */
-  shellLayout: boolean;
   /** The specifier `Auth` is imported by, for owner scoping on a page without the starter base. */
   auth: string;
   /** The app's own class lists, when it has the starters' `lib/ui.ts` and `lib/button.ts`. */
@@ -651,31 +729,20 @@ function _modelCrudStub(o: _ModelCrudStubOptions): string {
   const onPage = o.base !== undefined;
   const userId = onPage ? "this.user?.id ?? 0" : "Auth.user().id";
 
-  const flowImports = ["expose", "locked", ...(first ? ["validate"] : [])];
-  if (!onPage) flowImports.unshift("Component");
-  if (o.shellLayout) flowImports.push("type HtmlNode");
+  const parts = _frameParts(o);
   const imports = [
-    `import { ${flowImports.join(", ")} } from "@zerotal/flow";`,
+    _flowImport(parts, ["expose", "locked", ...(first ? ["validate"] : [])]),
     ...(owner && !onPage ? [`import { Auth } from "${o.auth}";`] : []),
     `import { ${model} } from "${o.modelImport}";`,
-    ...(o.layout ? [`import { ${o.layout} } from "${o.layoutImport}";`] : []),
+    ...parts.layoutImport,
     ...(o.styles ? [`import { buttonClass } from "${o.styles.button}";`] : []),
-    ...(onPage
-      ? [`import { Page${o.base!.titled ? ", titled" : ""} } from "${o.base!.import}";`]
-      : []),
+    ...parts.baseImport,
     ...(o.styles
       ? [`import { ${[...o.styles.names].sort().join(", ")} } from "${o.styles.ui}";`]
       : []),
   ].join("\n");
 
   const rowKeys = ["id", ...fields.map((c) => c.property)];
-  const statics = [
-    ...(onPage ? ["  static override interactive = true;"] : []),
-    ...(onPage && o.base!.titled
-      ? [`  static override title = titled("${_label(name.replace(/Page$/, ""))}");`]
-      : []),
-    ...(o.layout && !o.shellLayout ? [`  static layout = ${o.layout};`] : []),
-  ];
   const fieldLines = fields.map((c) => {
     const rule = c === first ? "@validate((rule) => rule.required()) " : "";
     return `  @expose ${rule}${c.property} = ${_initial(c)};`;
@@ -731,18 +798,10 @@ type Row = ${
  * The page is live: each action runs on the server over Flow's WebSocket, and the list
  * re-renders in place.${owner ? ` Every read and write goes through \`owned()\`, so nobody\n * sees or changes a ${record} that is not theirs.` : ""}
  */
-export class ${name} extends ${onPage ? "Page" : "Component"} {
-${statics.length ? statics.join("\n") + "\n\n" : ""}  @locked items: Row[] = [];
+export class ${name} extends ${parts.extends} {
+${_staticsBlock(parts)}  @locked items: Row[] = [];
   @expose editingId: number | null = null;
-${fieldLines.map((line) => `${line}\n`).join("")}${
-    o.shellLayout
-      ? `
-  override layout(page: HtmlNode): HtmlNode {
-    return <${o.layout} shell={this.shell()}>{page}</${o.layout}>;
-  }
-`
-      : ""
-  }
+${fieldLines.map((line) => `${line}\n`).join("")}${parts.layoutMethod}
   override async onMount(): Promise<void> {
     await this.load();
   }

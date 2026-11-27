@@ -9,7 +9,7 @@
 import { beforeAll, afterAll, describe, test, expect } from "bun:test";
 import { config } from "zerotal";
 import { createTestApp, migrateDatabase, type TestApp } from "zerotal/testing";
-import { assertPage } from "./support";
+import { assertPage, sendFormTokens } from "./support";
 
 let app: TestApp;
 
@@ -26,6 +26,9 @@ beforeAll(async () => {
   // table'. Running the real migrations also means the schema under test is the
   // schema that ships, rather than a second definition that drifts from it.
   await migrateDatabase();
+  // CSRF protection is on, so a form post carries the session's token, as the page's own form
+  // does. See support.ts.
+  sendFormTokens(app);
 });
 
 afterAll(() => app.close());

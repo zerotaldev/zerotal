@@ -8,7 +8,8 @@ description: Block cross-site request forgery by requiring a per-session token o
 Cross-site request forgery (CSRF) protection ensures that mutating requests
 (POST/PUT/PATCH/DELETE) originate from your own app, not a malicious third-party
 page. Zerotal's `CsrfMiddleware` (from `@zerotal/session`) handles this with a
-per-session token and zero client config for Axios/Inertia.
+per-session token, which a plain HTML form sends back in a hidden field and a script in a
+header.
 
 ```typescript
 // in a controller or middleware setup
@@ -21,8 +22,9 @@ import { CsrfMiddleware } from "@zerotal/session";
 
 ## Getting Started
 
-CSRF protection ships inside `@zerotal/session`, but it is **not on by default**:
-`SessionProvider` registers the session, not `CsrfMiddleware`. Register it yourself,
+CSRF protection ships inside `@zerotal/session`, but `SessionProvider` does not turn it on:
+it registers the session, not `CsrfMiddleware`. The Flow starter registers it in
+`bootstrap/app.ts`, and every form in it carries the token. Elsewhere, register it yourself,
 as [Enabling it](#enabling-it) shows. Until you do, the only cross-site defence a
 session cookie has is its `SameSite=Lax` attribute, which stops other sites but not
 other subdomains of your own.
@@ -37,15 +39,17 @@ import { CsrfMiddleware } from "@zerotal/session";
    (`crypto.randomUUID()`) and stores it in the [session](/docs/session).
 2. On every response it sets a readable `XSRF-TOKEN` cookie (non-`HttpOnly`,
    `SameSite=Lax`, `Path=/`).
-3. On a **mutating** request it requires that token back in an `X-CSRF-TOKEN` or
-   `X-XSRF-TOKEN` header, compared in constant time.
+3. On a **mutating** request it requires that token back, compared in constant time: in an
+   `X-CSRF-TOKEN` or `X-XSRF-TOKEN` header, or in a `_token` field of a form body
+   (`application/x-www-form-urlencoded` or `multipart/form-data`). The field is read from a
+   copy of the request, so the handler still reads the body itself, however it reads it.
 4. A missing or wrong token returns **419** (`{ "message": "CSRF token mismatch." }`).
 
 `GET`, `HEAD`, and `OPTIONS` are treated as safe and skip the check.
 
-Because the cookie is readable by JavaScript, **Axios and Inertia attach the
-`X-XSRF-TOKEN` header automatically** — first-party SPA forms work with no extra
-wiring.
+Because the cookie is readable by JavaScript, an HTTP client that echoes it **attaches the
+`X-XSRF-TOKEN` header automatically**, as the common ones do, and the Inertia adapter's
+requests carry it with no extra wiring.
 
 > **Danger** — The `XSRF-TOKEN` cookie intentionally omits the `HttpOnly` flag so
 > JavaScript can read it. This is by design (it carries no auth, only the CSRF
@@ -82,15 +86,35 @@ options baked in, so it drops straight into the `app.use([...])` array.
 
 ## Submitting the token
 
-### Axios / Inertia
+### Forms
 
-No work needed — the `XSRF-TOKEN` cookie is read and sent back as `X-XSRF-TOKEN`
-on every mutating request.
+Put `CsrfMiddleware.field()` inside every form that posts. It renders the hidden `_token`
+field holding the session's token, and the middleware reads it from the form body:
 
-### Manual fetch / classic forms
+```tsx
+import { CsrfMiddleware } from "@zerotal/session";
 
-Expose the token server-side and send it in the header (or a hidden field your
-handler reads). `CsrfMiddleware.token()` returns the current session's token:
+<form method="post" action={route("login.store")}>
+  {CsrfMiddleware.field()}
+  <input name="email" type="email" />
+  <button type="submit">Sign in</button>
+</form>;
+```
+
+A Flow page renders it as markup, and a compiled page compiles it, `cspSafe` included. In a
+template string it is the same markup: `${CsrfMiddleware.field()}`. Outside a request, or
+without a session, it renders nothing. A script that sends a form's fields on (the Flow
+starter's `data-method="put"` forms do) sends `_token` with them.
+
+### Inertia and other HTTP clients
+
+No work needed when the client echoes the cookie: the `XSRF-TOKEN` cookie is read and sent
+back as `X-XSRF-TOKEN` on every mutating request. Flow's own uploads do this too.
+
+### Manual fetch
+
+Expose the token server-side and send it in the header. `CsrfMiddleware.token()` returns the
+current session's token:
 
 ```typescript fragment
 // in an Inertia shared-props factory
@@ -120,11 +144,12 @@ await fetch("/posts", {
 
 ## Which approach should I use?
 
-- **Axios or Inertia SPA** — do nothing. The cookie-to-header round trip is
-  automatic; the token is never your concern.
-- **Hand-written `fetch` or a classic server-rendered form** — expose the token
-  with `CsrfMiddleware.token()` (meta tag or shared prop) and send it back in the
-  `X-CSRF-TOKEN` header or a hidden field.
+- **A server-rendered form** — put `{CsrfMiddleware.field()}` inside it.
+- **An Inertia app, or a client that echoes the cookie** — do nothing. The
+  cookie-to-header round trip is automatic; the token is never your concern.
+- **Hand-written `fetch`** — read the `XSRF-TOKEN` cookie, or expose the token with
+  `CsrfMiddleware.token()` (meta tag or shared prop), and send it back in the
+  `X-CSRF-TOKEN` header.
 - **Stateless bearer-token API** — skip CSRF entirely (see below).
 
 ## Pure-API routes
@@ -183,9 +208,11 @@ const res = await app
 res.assertCreated();
 ```
 
-The middleware accepts either `X-CSRF-Token` or `X-XSRF-Token`, and stores the
-value under the `_csrf_token` session key — seeding it directly is both simpler
-and less brittle than scraping the token out of a rendered form.
+The middleware accepts `X-CSRF-Token`, `X-XSRF-Token` or a `_token` form field, and stores
+the value under the `_csrf_token` session key — seeding it directly is both simpler
+and less brittle than scraping the token out of a rendered form. The Flow starter's
+`tests/support.ts` does this for every form post a test makes, and its `Browser` takes the
+token from the `XSRF-TOKEN` cookie instead, as a visitor's browser does.
 
 > **Note** — Exempting a route (a webhook receiver, say) is worth a test of its
 > own asserting the request succeeds _without_ a token. That is the one case
@@ -199,6 +226,7 @@ and less brittle than scraping the token out of a rendered form.
 | `CsrfMiddleware` | `class CsrfMiddleware extends BaseMiddleware<CsrfOptions>`             | Validates the token on mutating requests and sets the `XSRF-TOKEN` cookie. |
 | `.with()`        | `static with(options: Partial<CsrfOptions>): new () => CsrfMiddleware` | Bake `secure` into a zero-arg middleware class for `app.use([...])`.       |
 | `.token()`       | `static token(ctx?: HttpContext): string \| undefined`                 | Read the current request's CSRF token; defaults to the active context.     |
+| `.field()`       | `static field(ctx?: HttpContext): CsrfField`                           | The hidden `_token` input for a form, as markup; empty without a token.    |
 | `CsrfOptions`    | `{ secure?: boolean }`                                                 | Options accepted by `.with()`.                                             |
 
 ## Next steps

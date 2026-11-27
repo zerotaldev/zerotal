@@ -234,3 +234,33 @@ describe('the vue kit', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+// From the 1.18.4 triage: CsrfMiddleware read its token from a header only, no form in the Flow
+// starter carried one, and turning the middleware on made every form a 419. The starter now has
+// it on, and each form that posts carries the hidden `_token` field.
+describe('the flow starter and CSRF', () => {
+  const FLOW = join(TEMPLATES_DIR, 'flow');
+
+  it('turns CSRF protection on', async () => {
+    const bootstrap = await read('flow', 'bootstrap/app.ts');
+    expect(bootstrap).toMatch(/\.use\(\[\s*CsrfMiddleware/);
+  });
+
+  it('puts the token in every form that posts', () => {
+    const files = (readdirSync(join(FLOW, 'app', 'flow'), { recursive: true }) as string[]).filter((f) =>
+      f.endsWith('.tsx'),
+    );
+    const missing: string[] = [];
+    let forms = 0;
+    for (const file of files) {
+      const source = readFileSync(join(FLOW, 'app', 'flow', file), 'utf8');
+      for (const match of source.matchAll(/<form\b[^>]*>([\s\S]*?)<\/form>/g)) {
+        if (!/method="post"/.test(match[0].slice(0, match[0].indexOf('>') + 1))) continue;
+        forms++;
+        if (!match[1]!.includes('{CsrfMiddleware.field()}')) missing.push(file);
+      }
+    }
+    expect(forms).toBeGreaterThan(20);
+    expect(missing).toEqual([]);
+  });
+});

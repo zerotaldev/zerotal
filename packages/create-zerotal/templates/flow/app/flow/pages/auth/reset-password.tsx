@@ -1,4 +1,5 @@
 import { route } from "zerotal";
+import { CsrfMiddleware } from "zerotal/session";
 import type { HtmlNode } from "@zerotal/flow";
 import { AuthLayout } from "../../layouts/AuthLayout";
 import { buttonClass } from "../../lib/button";
@@ -38,6 +39,7 @@ export class ResetPasswordPage extends Page {
 
     return (
       <form method="post" action={route("reset-password.store")} class="space-y-5">
+        {CsrfMiddleware.field()}
         <input type="hidden" name="token" value={token} />
         <div class={FIELD}>
           <div class={FIELD_LABEL_ROW}>

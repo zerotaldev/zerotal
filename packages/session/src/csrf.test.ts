@@ -152,3 +152,103 @@ describe("CsrfMiddleware", () => {
     expect(setCookie).not.toContain("XSRF-TOKEN=");
   });
 });
+
+// ── The `_token` form field ───────────────────────────────────────────────────
+//
+// The token used to be read from a header only, and a plain HTML form cannot send one: with the
+// middleware on, every form in the Flow starter was a 419.
+
+/** A form request carrying `body`, in a session holding `token`. */
+function formCtx(method: string, body: BodyInit, token: string, headers: HeadersInit = {}) {
+  const req = new Request("http://localhost/test", { method, body, headers });
+  const ctx = new HttpContext(req, null as never);
+  (ctx as unknown as Record<string, unknown>)["session"] = new SessionManager(
+    "id",
+    { _csrf_token: token },
+    driver,
+  );
+  return ctx;
+}
+
+describe("CsrfMiddleware reads the token from a form", () => {
+  it("accepts it as the _token field of a urlencoded form", async () => {
+    const ctx = formCtx(
+      "POST",
+      new URLSearchParams({ _token: "form-token", name: "Ada" }),
+      "form-token",
+    );
+    await run(new CsrfMiddleware(), ctx);
+    expect(ctx.response).toBeUndefined();
+  });
+
+  it("accepts it as the _token field of a multipart form", async () => {
+    const form = new FormData();
+    form.set("_token", "multipart-token");
+    form.set("avatar", new File(["x"], "a.png", { type: "image/png" }));
+    const ctx = formCtx("PUT", form, "multipart-token");
+    await run(new CsrfMiddleware(), ctx);
+    expect(ctx.response).toBeUndefined();
+  });
+
+  it("leaves the body for the handler to read, in any way it reads it", async () => {
+    const ctx = formCtx("POST", new URLSearchParams({ _token: "t", name: "Ada" }), "t");
+    let raw = "";
+    let parsed: Record<string, unknown> = {};
+    await run(new CsrfMiddleware(), ctx, async () => {
+      raw = await ctx.request.clone().text();
+      parsed = await ctx.body();
+    });
+    expect(raw).toBe("_token=t&name=Ada");
+    expect(parsed["name"]).toBe("Ada");
+
+    const multipart = new FormData();
+    multipart.set("_token", "m");
+    multipart.set("file", new File(["hello"], "hello.txt"));
+    const upload = formCtx("POST", multipart, "m");
+    let file: unknown;
+    await run(new CsrfMiddleware(), upload, async () => {
+      file = (await upload.request.formData()).get("file");
+    });
+    expect(file).toBeInstanceOf(File);
+  });
+
+  it("refuses a form whose _token is wrong, missing or empty", async () => {
+    for (const body of [{ _token: "wrong" }, { name: "Ada" }, { _token: "" }]) {
+      const ctx = formCtx("POST", new URLSearchParams(body), "right");
+      await run(new CsrfMiddleware(), ctx);
+      expect(ctx.response?.status).toBe(419);
+    }
+  });
+
+  it("does not read _token from a JSON body", async () => {
+    const ctx = formCtx("POST", JSON.stringify({ _token: "t" }), "t", {
+      "Content-Type": "application/json",
+    });
+    await run(new CsrfMiddleware(), ctx);
+    expect(ctx.response?.status).toBe(419);
+  });
+
+  it("prefers the header when both are sent", async () => {
+    const ctx = formCtx("POST", new URLSearchParams({ _token: "t" }), "t", {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "x-csrf-token": "wrong",
+    });
+    await run(new CsrfMiddleware(), ctx);
+    expect(ctx.response?.status).toBe(419);
+  });
+});
+
+describe("CsrfMiddleware.field()", () => {
+  it("renders the hidden field holding the session's token", () => {
+    const ctx = makeCtx("GET", undefined, 'tok"en');
+    const field = CsrfMiddleware.field(ctx);
+    expect(field.html).toBe('<input type="hidden" name="_token" value="tok&quot;en">');
+    expect(`${field}`).toBe(field.html);
+  });
+
+  it("renders nothing without a token, or outside a request", () => {
+    const req = new Request("http://localhost/test");
+    expect(CsrfMiddleware.field(new HttpContext(req, null as never)).html).toBe("");
+    expect(CsrfMiddleware.field().html).toBe("");
+  });
+});

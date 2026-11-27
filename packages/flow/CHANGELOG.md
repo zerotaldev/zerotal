@@ -96,6 +96,23 @@ change.
 - The readers of the signed-in user (snapshot ownership, durable keys, the upload endpoint) use
   `currentUser()` / `currentUserId()` from `@zerotal/core/auth` instead of casting the context.
 
+- **A function call as a text child compiles.** `{__("projects.title")}`, `{formatDate(x)}` and
+  `{this.label()}` sent the page to the runtime renderer, and under `cspSafe` stopped the boot,
+  though the same call compiled in an attribute or hoisted into a leading const. A call now
+  compiles to `__esc(call)`, which writes its result as the runtime writes a child: markup as
+  markup, an array item by item, anything else escaped. So a page that translates its strings
+  with `__()` compiles, `cspSafe` included. A call that awaits, or is handed markup as an
+  argument, still renders through the runtime, and a client-only magic in one is still refused.
+- **Compiled text is escaped exactly as the runtime escapes it.** `__esc` left `"` and `'` as
+  they were, where the runtime writes `&quot;` and `&#x27;`. The page reads the same; the HTML is
+  now byte for byte what the runtime renders.
+- **`make:flow` writes every kind of page the way the app's own pages are written.** In the Flow
+  starter only `--crud --model` extended the starter's `Page` and rendered inside its layout: a
+  plain page and a `--crud` page extended the bare `Component`, and `--layout AppLayout` wrote a
+  `static layout` that none of the starter's layouts take. Every mode now extends `Page`, names
+  its tab with `titled()`, is interactive, and renders its layout from `layout()` with the
+  page's shell. An app without that base class gets `Component` and `static layout`, as before.
+
 ### Added
 
 - Error frames carry a `code` (`server_error`, `invalid_snapshot`, `stale_snapshot`,
@@ -113,6 +130,8 @@ change.
 
 - A `@task` that streams patches for longer than 15 s is no longer taken for a lost action: each
   streamed patch counts as progress for its ack.
+- **A Flow upload carries the anti-forgery token.** `/__flow/upload` runs the app's middleware,
+  so with `CsrfMiddleware` on, as the Flow starter now has it, every upload was refused with a 419. The client sends the `XSRF-TOKEN` cookie back as the `X-XSRF-TOKEN` header.
 
 ## [1.18.4] — 2026-11-27
 

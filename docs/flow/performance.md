@@ -137,7 +137,6 @@ Set `ZT_FLOW_COMPILE_LOG=1` to print what blocks each page. The common causes:
 | Blocker                                                                 | Fix                                                 |
 | ----------------------------------------------------------------------- | --------------------------------------------------- |
 | `render()` with more than one `return`                                  | Build the branches into a variable and return once  |
-| A function call in a text child — including **`__()`**                  | See below                                           |
 | A component from a package, or one declared in the page's own file      | See below                                           |
 | A component whose own markup does not compile                           | See below                                           |
 | A `class` naming an imported constant it could not read                 | Export the constant as a plain string `const`       |
@@ -183,13 +182,14 @@ head, a layout, reading the signed-in user), as long as that class is imported f
 module and extends `Component` itself, or through another such class. Its `@expose` and `@locked`
 fields count as the page's own.
 
-**`__()` is the one that matters most.** A translated template is a function call in a text child,
-so a page that translates a single string falls off the fast path — which in an app where `__()`
-is the house style means every page. The cost is normally just speed, but it is not only speed
-under [`cspSafe`](/docs/flow/components#csp-safe-mode): there, every page **must** compile or the
-build fails, so an app using `__()` in its templates cannot run in CSP-safe mode today. If you need
-`cspSafe`, keep translation out of the template — resolve strings in the action or `onMount()` into
-`@locked` properties and render those.
+A function call in a text child compiles too: `{__("projects.title")}`, `{formatDate(project.dueOn)}`,
+`{this.badge()}`, at the top of the markup, in a ternary branch or inside a `.map()`. It runs on the
+server as the page renders, and its result is written the way the runtime writes a child: markup a
+method returns (JSX) as that markup, an array item by item, `null`, `undefined` and booleans as
+nothing, and anything else escaped. It needs no client code, so a page that translates its strings
+with `__()` compiles under [`cspSafe`](/docs/flow/components#csp-safe-mode). Two calls keep the page
+on the runtime: one that awaits (`{format(await load())}`; await it in a leading const and render
+the const), and one handed markup as an argument (`{wrap(<b>hi</b>)}`).
 
 ## Interaction polish
 

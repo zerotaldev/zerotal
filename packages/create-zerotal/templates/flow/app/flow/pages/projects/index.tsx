@@ -1,4 +1,5 @@
 import { route } from "zerotal";
+import { CsrfMiddleware } from "zerotal/session";
 import { url, type HtmlNode } from "@zerotal/flow";
 import { Project, type ProjectData } from "@app/models/Project";
 import type { PaginationData } from "../../components/Pagination";
@@ -350,6 +351,7 @@ export class ProjectsPage extends Page {
                     action={route("projects.destroy", { project: project.id })}
                     data-method="delete"
                   >
+                    {CsrfMiddleware.field()}
                     <button
                       type="submit"
                       class={buttonClass("danger", "md", "w-full")}

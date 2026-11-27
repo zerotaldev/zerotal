@@ -1,4 +1,5 @@
 import { route } from "zerotal";
+import { CsrfMiddleware } from "zerotal/session";
 import type { HtmlNode } from "@zerotal/flow";
 import { socialProviders } from "@app/auth/social";
 import { socialLinks } from "../../components/SocialButtons";
@@ -79,6 +80,7 @@ export class RegisterPage extends Page {
         ) : null}
 
         <form method="post" action={route("register.store")} class="space-y-5">
+          {CsrfMiddleware.field()}
           <div class={FIELD}>
             <div class={FIELD_LABEL_ROW}>
               <label for="field-name" class={LABEL}>

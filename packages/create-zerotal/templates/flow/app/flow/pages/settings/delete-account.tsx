@@ -1,4 +1,5 @@
 import { route } from "zerotal";
+import { CsrfMiddleware } from "zerotal/session";
 import type { HtmlNode } from "@zerotal/flow";
 import { SettingsLayout } from "../../layouts/SettingsLayout";
 import { buttonClass } from "../../lib/button";
@@ -84,6 +85,7 @@ export class DeleteAccountPage extends Page {
                 data-method="delete"
                 class="space-y-5"
               >
+                {CsrfMiddleware.field()}
                 <div class={FIELD}>
                   <div class={FIELD_LABEL_ROW}>
                     <label for="delete-account-password" class={LABEL}>

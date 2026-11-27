@@ -1,4 +1,5 @@
 import { route } from "zerotal";
+import { CsrfMiddleware } from "zerotal/session";
 import type { HtmlNode } from "@zerotal/flow";
 import { AuthLayout } from "../../layouts/AuthLayout";
 import { buttonClass } from "../../lib/button";
@@ -37,6 +38,7 @@ export class ConfirmPasswordPage extends Page {
 
     return (
       <form method="post" action={route("confirm-password.store")} class="space-y-5">
+        {CsrfMiddleware.field()}
         <div class={FIELD}>
           <div class={FIELD_LABEL_ROW}>
             <label for="field-password" class={LABEL}>

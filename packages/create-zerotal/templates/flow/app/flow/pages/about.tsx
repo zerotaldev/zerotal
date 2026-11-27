@@ -1,4 +1,5 @@
 import { route } from "zerotal";
+import { CsrfMiddleware } from "zerotal/session";
 import type { HtmlNode } from "@zerotal/flow";
 import { PublicLayout } from "../layouts/PublicLayout";
 import { buttonClass } from "../lib/button";
@@ -179,6 +180,7 @@ export class AboutPage extends Page {
                 class="space-y-5"
                 novalidate
               >
+                {CsrfMiddleware.field()}
                 <div class={FIELD}>
                   <div class={FIELD_LABEL_ROW}>
                     <label for="field-name" class={LABEL}>

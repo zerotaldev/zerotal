@@ -395,3 +395,88 @@ export class Task extends Model {
     expect(src).not.toContain("@jsxImportSource");
   });
 });
+
+// From the 1.18.4 triage: only `--crud --model` matched the Flow starter. A plain page and a
+// `--crud` page extended the bare `Component`, outside the starter's layout, and `--layout
+// AppLayout` wrote `static layout = AppLayout`, a form none of the starter's layouts take.
+describe("make:flow in the Flow starter, every mode", () => {
+  const cwd = process.cwd();
+  afterEach(() => process.chdir(cwd));
+
+  async function flowStarter(): Promise<string> {
+    const root = await freshDir();
+    await Bun.write(join(root, "routes/web.ts"), 'Router.flow("/", HomePage).name("home");\n');
+    await Bun.write(
+      join(root, "app/flow/lib/page.ts"),
+      "export function titled(title: string) { return () => title; }\n" +
+        "export abstract class Page extends Component {}\n",
+    );
+    await Bun.write(
+      join(root, "app/flow/layouts/AppLayout.tsx"),
+      "export function AppLayout({ shell }: { shell: Shell }) {}\n",
+    );
+    await Bun.write(
+      join(root, "app/flow/layouts/PublicLayout.tsx"),
+      "export function PublicLayout({ shell }: { shell: Shell }) {}\n",
+    );
+    await Bun.write(join(root, "app/flow/pages/home.tsx"), "export class HomePage {}\n");
+    process.chdir(root);
+    return root;
+  }
+
+  async function generate(
+    root: string,
+    flags: Record<string, unknown>,
+    file = "reports.tsx",
+  ): Promise<string> {
+    const { c } = mk({ name: "ReportsPage" }, flags);
+    await c.run();
+    return Bun.file(join(root, "app/flow/pages", file)).text();
+  }
+
+  /** What every starter page has: the base, its tab title, the shell layout, and live state. */
+  function expectStarterPage(src: string, layout = "AppLayout"): void {
+    expect(src).toContain('import { Page, titled } from "../lib/page";');
+    expect(src).toContain("export class ReportsPage extends Page {");
+    expect(src).toContain('static override title = titled("Reports");');
+    expect(src).toContain("static override interactive = true;");
+    expect(src).toContain(`import { ${layout} } from "../layouts/${layout}";`);
+    expect(src).toContain("override layout(page: HtmlNode): HtmlNode {");
+    expect(src).toContain(`return <${layout} shell={this.shell()}>{page}</${layout}>;`);
+    expect(src).not.toContain("static layout");
+    expect(src).not.toContain("Component");
+    expect(() => new Bun.Transpiler({ loader: "tsx" }).transformSync(src)).not.toThrow();
+  }
+
+  it("a plain page extends the starter's Page, in its layout", async () => {
+    const src = await generate(await flowStarter(), {});
+    expectStarterPage(src);
+    expect(src).toContain('import { expose, type HtmlNode } from "@zerotal/flow";');
+    expect(src).toContain("@expose increment(): void");
+  });
+
+  it("a --crud page without a model does too", async () => {
+    const src = await generate(await flowStarter(), { crud: true });
+    expectStarterPage(src);
+    expect(src).toContain(
+      'import { expose, locked, validate, type HtmlNode } from "@zerotal/flow";',
+    );
+    expect(src).toContain("@expose async save(): Promise<void>");
+  });
+
+  it("--layout renders the layout it names the way the starter does", async () => {
+    const src = await generate(await flowStarter(), { layout: "PublicLayout" });
+    expectStarterPage(src, "PublicLayout");
+    expect(src).not.toContain("AppLayout");
+  });
+
+  it("a page outside the starter still extends Component, with a static layout", async () => {
+    const root = await flowStarter();
+    await rm(join(root, "app/flow/lib"), { recursive: true, force: true });
+    const src = await generate(root, { layout: "AppLayout" });
+    expect(src).toContain('import { Component, expose } from "@zerotal/flow";');
+    expect(src).toContain("export class ReportsPage extends Component {");
+    expect(src).toContain("static layout = AppLayout;");
+    expect(src).not.toContain("titled");
+  });
+});

@@ -1,4 +1,5 @@
 import { route } from "zerotal";
+import { CsrfMiddleware } from "zerotal/session";
 import type { HtmlNode } from "@zerotal/flow";
 import { passkeysEnabled } from "@app/auth/passkeys";
 import { socialProviders } from "@app/auth/social";
@@ -104,6 +105,7 @@ export class LoginPage extends Page {
         ) : null}
 
         <form method="post" action={route("login.store")} class="space-y-5">
+          {CsrfMiddleware.field()}
           <div class={FIELD}>
             <div class={FIELD_LABEL_ROW}>
               <label for="field-email" class={LABEL}>

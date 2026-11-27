@@ -1,4 +1,5 @@
 import { route } from "zerotal";
+import { CsrfMiddleware } from "zerotal/session";
 import type { HtmlNode } from "@zerotal/flow";
 import { listSessions, type SessionSummary } from "@app/auth/sessions";
 import { SettingsLayout } from "../../layouts/SettingsLayout";
@@ -126,6 +127,7 @@ export class SessionsPage extends Page {
                 data-method="delete"
                 class="space-y-5"
               >
+                {CsrfMiddleware.field()}
                 <div class={FIELD}>
                   <div class={FIELD_LABEL_ROW}>
                     <label for="sign-out-sessions-password" class={LABEL}>

@@ -1,4 +1,5 @@
-import { Application, basePath } from "zerotal";
+import { Application, basePath, env } from "zerotal";
+import { CsrfMiddleware } from "zerotal/session";
 import providers from "./providers";
 import { Handler } from "../app/exceptions/Handler";
 import type { User } from "../app/models/User.ts";
@@ -20,6 +21,11 @@ const app = Application.create({ providers })
   .fileBasedRouting({
     web: basePath("app/routes"),
   })
+  // Refuses a POST, PUT, PATCH or DELETE that does not carry this session's token, with a
+  // 419: another site cannot make a signed-in browser submit one of these forms. Every form
+  // in app/flow/ carries the token in a hidden field, `{CsrfMiddleware.field()}`; a script
+  // sends the XSRF-TOKEN cookie's value back as the X-XSRF-TOKEN header instead.
+  .use([CsrfMiddleware.with({ secure: env("APP_ENV", "development") === "production" })])
   // Renders 404s and other HTTP errors through app/flow/pages/error.tsx.
   .withExceptionHandler(Handler);
 

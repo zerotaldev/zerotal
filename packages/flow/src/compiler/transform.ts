@@ -1653,10 +1653,31 @@ function _compileRenderMethod(
       return `__esc(${expr.getText()})`;
     }
 
+    // `{__("k")}`, `{formatDate(x)}`, `{this.label()}` — a call, run on the server as the page
+    // renders. `__esc` renders its result the way the runtime renders a child: a rendered node as
+    // markup, an array item by item, anything else escaped. It used to send the page to the
+    // runtime, and under cspSafe stop the boot, though the same call compiled in an attribute.
+    if (ts.isCallExpression(expr)) {
+      // Inside a `.map()` the call sits in the arrow the compiler writes for the loop, where an
+      // `await` is a syntax error; such a page renders through the runtime, as it always did.
+      if (_containsAwait(expr)) {
+        bail(
+          `\`{${_snippet(expr)}}\` awaits in a text child`,
+          "await it in a leading const and render the const",
+          expr,
+        );
+        return null;
+      }
+      // Markup handed to a call, or a `$flow` read, is not a value the server can work out.
+      if (_containsJsx(expr) || _referencesGel(expr)) return null;
+      _assertNoServerMagic(expr.expression, "a call");
+      for (const arg of expr.arguments) _assertNoServerMagic(arg, "a call's arguments");
+      return `__esc(${expr.getText()})`;
+    }
+
     // General value expression — identifier (local/param), member/element access,
     // arithmetic/comparison, unary — render as escaped text. Emitted verbatim so it
     // evaluates against `this` + carried module scope + enclosing map params.
-    // CallExpressions are excluded: they may return an HtmlNode rather than a string.
     if (
       ts.isIdentifier(expr) ||
       ts.isPropertyAccessExpression(expr) ||

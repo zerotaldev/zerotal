@@ -14,6 +14,19 @@ follows the Zerotal monorepo's unified versioning.
   from `@zerotal/arch`, so an agent working in a new app reaches for the generators before
   writing a screen by hand.
 
+### Changed
+
+- **BREAKING:** The Flow starter turns CSRF protection on: `bootstrap/app.ts` registers
+  `CsrfMiddleware`, so a POST, PUT, PATCH or DELETE without this session's token is refused
+  with a 419. Every form in the starter carries the token (`{CsrfMiddleware.field()}`), the
+  layouts' sign-out form included. An app that enables the middleware the same way must put
+  `{CsrfMiddleware.field()}` inside each of its own forms that posts, send the `XSRF-TOKEN`
+  cookie back as `X-XSRF-TOKEN` from its own scripts, and give its tests a token: the starter's
+  `tests/support.ts` (`sendFormTokens()`, and `Browser`) shows how.
+- **The Flow starter tests CSRF protection.** `tests/csrf.test.ts` checks that a post without
+  the token, or with another session's, is refused, and that every form that posts on the
+  public, auth and settings pages carries it.
+
 ## [1.18.4] — 2026-11-27
 
 ### Added

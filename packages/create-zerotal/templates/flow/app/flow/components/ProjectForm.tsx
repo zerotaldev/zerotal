@@ -1,4 +1,5 @@
 import { route } from "zerotal";
+import { CsrfMiddleware } from "zerotal/session";
 import type { HtmlNode } from "@zerotal/flow";
 import { buttonClass } from "../lib/button";
 import { STATUS_OPTIONS } from "../lib/projects";
@@ -56,6 +57,7 @@ export function ProjectForm({
   return (
     <div class={CARD}>
       <form method="post" action={action} data-method={method}>
+        {CsrfMiddleware.field()}
         <div class={`${CARD_BODY} space-y-5`}>
           <div class={FIELD}>
             <div class={FIELD_LABEL_ROW}>

@@ -1,4 +1,5 @@
 import { route } from "zerotal";
+import { CsrfMiddleware } from "zerotal/session";
 import type { HtmlNode } from "@zerotal/flow";
 import { mailIsLogged } from "@app/support/mail";
 import { AuthLayout } from "../../layouts/AuthLayout";
@@ -37,6 +38,7 @@ export class ForgotPasswordPage extends Page {
 
     return (
       <form method="post" action={route("forgot-password.store")} class="space-y-5">
+        {CsrfMiddleware.field()}
         <div class={FIELD}>
           <div class={FIELD_LABEL_ROW}>
             <label for="field-email" class={LABEL}>

@@ -275,6 +275,110 @@ function _exportedFunction(
   return null;
 }
 
+/**
+ * The first place a function component reads its `children` as a value, if it does.
+ *
+ * A compiled page passes a component its children already rendered, as markup. The runtime passes
+ * them as they were written: a string stays a string. So a component that places `{children}` in
+ * its markup renders the same either way, and one that tests whether it has any does too (an
+ * empty rendering is passed as no children). One that uses them as a value (`aria-label={children}`,
+ * `labels[children]`, `` `${children}` ``) would read `[object Object]` from compiled output, so
+ * such a component keeps the page on the runtime.
+ */
+function _childrenReadAsValue(
+  fn: ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression,
+): ts.Node | null {
+  let found: ts.Node | null = null;
+
+  /** Whether `node` names the children: `children`, or `props.children`. */
+  const isChildren = (node: ts.Node): boolean =>
+    (ts.isIdentifier(node) &&
+      node.text === "children" &&
+      !(ts.isPropertyAccessExpression(node.parent) && node.parent.name === node) &&
+      !ts.isBindingElement(node.parent) &&
+      !(ts.isPropertyAssignment(node.parent) && node.parent.name === node) &&
+      !ts.isShorthandPropertyAssignment(node.parent) &&
+      !ts.isJsxAttribute(node.parent)) ||
+    (ts.isPropertyAccessExpression(node) && node.name.text === "children");
+
+  /** Whether `node` is used in one of the ways that read the same from either path. */
+  const isSafeUse = (node: ts.Node): boolean => {
+    let at: ts.Node = node;
+    while (ts.isParenthesizedExpression(at.parent)) at = at.parent;
+    const parent = at.parent;
+    // `{children}` as a child of an element or a fragment.
+    if (ts.isJsxExpression(parent)) {
+      return ts.isJsxElement(parent.parent) || ts.isJsxFragment(parent.parent);
+    }
+    // Tested for whether there are any.
+    if (ts.isConditionalExpression(parent)) return parent.condition === at;
+    if (ts.isPrefixUnaryExpression(parent))
+      return parent.operator === ts.SyntaxKind.ExclamationToken;
+    if (ts.isIfStatement(parent)) return parent.expression === at;
+    if (ts.isBinaryExpression(parent)) {
+      const op = parent.operatorToken.kind;
+      if (op === ts.SyntaxKind.AmpersandAmpersandToken) return parent.left === at;
+      // `children || fallback` / `children ?? fallback` hand the children on: safe only where
+      // the result lands as a JSX child, which the walk sees when it reaches `parent` itself.
+      if (op === ts.SyntaxKind.BarBarToken || op === ts.SyntaxKind.QuestionQuestionToken) {
+        return isSafeUse(parent);
+      }
+    }
+    return false;
+  };
+
+  const walk = (node: ts.Node): void => {
+    if (found) return;
+    if (isChildren(node)) {
+      if (!isSafeUse(node)) found = node;
+      return;
+    }
+    ts.forEachChild(node, walk);
+  };
+  if (fn.body) walk(fn.body);
+  return found;
+}
+
+/** The named entities {@link _decodeJsxEntities} reads; any other leaves a page on the runtime. */
+const JSX_ENTITIES: Readonly<Record<string, string>> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+  copy: "©",
+  reg: "®",
+  trade: "™",
+  hellip: "…",
+  mdash: "—",
+  ndash: "–",
+  middot: "·",
+  times: "×",
+  rarr: "→",
+  larr: "←",
+};
+
+/**
+ * A JSX attribute string with its character references decoded, as the JSX transform decodes it:
+ * `&amp;` is `&`, `&#39;` and `&#x27;` are `'`. `null` when it holds a named reference outside
+ * {@link JSX_ENTITIES}, which the compiler cannot vouch for.
+ */
+function _decodeJsxEntities(text: string): string | null {
+  let unknown = false;
+  const decoded = text.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z][a-z0-9]*);/gi, (match, ref: string) => {
+    if (ref[0] === "#") {
+      const code =
+        ref[1] === "x" || ref[1] === "X" ? parseInt(ref.slice(2), 16) : parseInt(ref.slice(1), 10);
+      return Number.isFinite(code) && code <= 0x10ffff ? String.fromCodePoint(code) : match;
+    }
+    const value = JSX_ENTITIES[ref];
+    if (value === undefined) unknown = true;
+    return value ?? match;
+  });
+  return unknown ? null : decoded;
+}
+
 /** An empty member table: a function component has no `this`. */
 function _noMembers(): MemberInfo {
   return {
@@ -302,6 +406,7 @@ function _componentVerdict(sf: ts.SourceFile, name: string): ComponentVerdict {
   const rel = path.relative(process.cwd(), found.file).split("\\").join("/");
   let verdict: ComponentVerdict;
   const async = ts.getModifiers(found.fn)?.some((m) => m.kind === ts.SyntaxKind.AsyncKeyword);
+  const childrenUse = _childrenReadAsValue(found.fn);
   if (async || found.fn.asteriskToken) {
     verdict = {
       ok: false,
@@ -313,6 +418,16 @@ function _componentVerdict(sf: ts.SourceFile, name: string): ComponentVerdict {
       ok: false,
       reason: `\`<${name}>\` takes more than one parameter`,
       fix: "take one props object",
+    };
+  } else if (childrenUse) {
+    const use = childrenUse;
+    const { line, character } = use
+      .getSourceFile()
+      .getLineAndCharacterOfPosition(use.getStart(use.getSourceFile()));
+    verdict = {
+      ok: false,
+      reason: `\`<${name}>\` reads its children as a value (${rel}:${line + 1}:${character + 1})`,
+      fix: "place them as {children} in its markup and pass values as props, or let the page render through the runtime",
     };
   } else if (_componentDepth >= MAX_COMPONENT_DEPTH) {
     verdict = {
@@ -1827,7 +1942,18 @@ function _compileRenderMethod(
         continue;
       }
       if (ts.isStringLiteral(init)) {
-        props.push(`${key}: ${JSON.stringify(init.text)}`);
+        // A JSX attribute string is markup text: `title="A &amp; B"` hands the component
+        // `A & B`, as the runtime's JSX transform does.
+        const value = _decodeJsxEntities(init.text);
+        if (value === null) {
+          bail(
+            `\`<${tag} ${name}="…">\` holds an entity the compiler can't read`,
+            'write the character itself, or pass it as {"…"}',
+            attr,
+          );
+          return true;
+        }
+        props.push(`${key}: ${JSON.stringify(value)}`);
         continue;
       }
       if (ts.isJsxExpression(init)) {
@@ -1876,7 +2002,10 @@ function _compileRenderMethod(
     if (meaningful) {
       const markup = captureExpr(() => visitChildren(children));
       if (markup === null) return true;
-      props.push(`"children": { html: ${markup} }`);
+      // Children that render to nothing (`{this.error && <p>…</p>}` with no error) are no
+      // children at all, as the runtime's falsy child is: a component that tests `children`
+      // must not find a truthy empty node and draw an empty wrapper.
+      props.push(`"children": ((h) => (h === "" ? undefined : { html: h }))(${markup})`);
     }
 
     emitDynamic(`(${tag}({ ${props.join(", ")} })).html`);

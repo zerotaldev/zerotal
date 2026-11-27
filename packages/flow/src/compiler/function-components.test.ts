@@ -90,6 +90,22 @@ export default Card;
 }
 `,
   );
+  // Draws its wrapper only when it has children, as flow-ui's Modal and Alert do.
+  writeFileSync(
+    join(TMP, "components", "Maybe.tsx"),
+    `${PRAGMA}export function Maybe(props: { children?: unknown }) {
+  return <>{props.children ? <div class="wrap">{props.children}</div> : <i>none</i>}</>;
+}
+`,
+  );
+  // Uses its text child as a value, which only the runtime hands it as a string.
+  writeFileSync(
+    join(TMP, "components", "Labelled.tsx"),
+    `${PRAGMA}export function Labelled({ children }: { children?: unknown }) {
+  return <span aria-label={children}>x</span>;
+}
+`,
+  );
 });
 
 afterAll(() => {
@@ -207,6 +223,36 @@ describe("a compiled page calls the app's own function components", () => {
   });
 });
 
+describe("children and string props arrive as the runtime hands them", () => {
+  it("children that render to nothing are no children", async () => {
+    const { compiled, runtime } = await bothWays(
+      "EmptyKids",
+      page(
+        "EmptyKids",
+        `import { Maybe } from "./components/Maybe";`,
+        `<div><Maybe>{flag && <p>error</p>}</Maybe><Maybe><b>yes</b></Maybe></div>`,
+        `const flag = false;`,
+      ),
+    );
+    expect(compiled).toBe(runtime);
+    expect(compiled).toContain("<i>none</i>");
+    expect(compiled).toContain('<div class="wrap"><b>yes</b></div>');
+  });
+
+  it("decodes the entities in a string prop", async () => {
+    const { compiled, runtime } = await bothWays(
+      "EntityProp",
+      page(
+        "EntityProp",
+        `import Card from "./components/Card";`,
+        `<Card title="A &amp; B &#39;x&#x27; &copy;" />`,
+      ),
+    );
+    expect(compiled).toBe(runtime);
+    expect(compiled).toContain("A &amp; B &#x27;x&#x27; ©");
+  });
+});
+
 describe("and falls back, saying why, when it cannot", () => {
   const blocked = (name: string, imports: string, body: string, members = ""): string => {
     const file = join(TMP, `${name}.tsx`);
@@ -271,6 +317,21 @@ describe("and falls back, saying why, when it cannot", () => {
       `<Card title="x" onPick={() => 1} />`,
     );
     expect(why).toContain("is passed a function");
+  });
+
+  it("a component that uses its children as a value", () => {
+    const why = blocked(
+      "A8",
+      `import { Labelled } from "./components/Labelled";`,
+      `<Labelled>Close</Labelled>`,
+    );
+    expect(why).toContain("reads its children as a value");
+    expect(why).toContain("Labelled.tsx:3:");
+  });
+
+  it("a string prop holding an entity it cannot vouch for", () => {
+    const why = blocked("A9", `import Card from "./components/Card";`, `<Card title="&zwnj;x" />`);
+    expect(why).toContain("holds an entity");
   });
 });
 

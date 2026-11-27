@@ -15,6 +15,10 @@ follows the Zerotal monorepo's unified versioning.
   the props' type, `inertia<{ projects: Project[] }>()`, and read `page?.props.projects`, typed as
   `InertiaPageOf<P>`. Without a type argument it returns `InertiaPage` as before, so existing
   tests compile as they are.
+  Two type-level reads change with the second overload: `ReturnType<TestResponse["inertia"]>` names
+  the last overload, so it is now `InertiaPageOf<object> | null` (write
+  `ReturnType<() => InertiaPage | null>`, or use `InertiaPage` directly), and a subclass that
+  overrides `inertia()` has to declare both overloads.
 
 ## [1.18.3] — 2026-11-26
 

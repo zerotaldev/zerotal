@@ -127,30 +127,40 @@ export class QueueWorkCommand extends Command {
   }
 
   /**
-   * Call `drain` when asked to stop, and `force` when asked a second time.
+   * Call `drain` when asked to stop, and `force` when a signal asks a second time.
    *
    * Asked by `zt dev` over IPC on every restart and on quit, by a process manager with
    * SIGTERM, by a developer with Ctrl+C. Without this the worker had no stop handler at all:
    * every one of those killed it where it stood, mid-job, and the job stayed reserved until its
-   * lease ran out. A second request is the way out of a job that will not finish.
+   * lease ran out. A second signal is the way out of a job that will not finish.
+   *
+   * Only a second *signal* forces it. Ctrl+C in `zt dev` reaches the worker as a signal (the
+   * terminal sends it to the whole process group) and `zt dev` then asks over IPC as well: two
+   * requests for one keypress, which must not cut the running job short.
    *
    * @returns A function that removes the handlers.
    * @internal
    */
   protected _onStopRequest(drain: () => void, force: () => void): () => void {
-    let asked = false;
-    const stop = (): void => {
-      if (asked) return force();
-      asked = true;
+    let draining = false;
+    let signals = 0;
+    const ask = (): void => {
+      if (draining) return;
+      draining = true;
       drain();
     };
-    const offIpc = onGracefulStopRequest(stop);
-    process.on("SIGINT", stop);
-    process.on("SIGTERM", stop);
+    const onSignal = (): void => {
+      signals++;
+      if (signals > 1) return force();
+      ask();
+    };
+    const offIpc = onGracefulStopRequest(ask);
+    process.on("SIGINT", onSignal);
+    process.on("SIGTERM", onSignal);
     return () => {
       offIpc();
-      process.off("SIGINT", stop);
-      process.off("SIGTERM", stop);
+      process.off("SIGINT", onSignal);
+      process.off("SIGTERM", onSignal);
     };
   }
 }

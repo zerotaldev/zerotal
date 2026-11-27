@@ -135,12 +135,12 @@ function _matchesEntry(path: string, entry: string): boolean {
 export function _classifyChange(relativePath: string, watch: DevWatchPaths = {}): DevChange {
   const path = relativePath.replace(/\\/g, "/");
   if (_isEnvFile(path)) return "restart";
-  if (path.startsWith(".")) return null;
   if (_IGNORE.some((prefix) => path.startsWith(prefix))) return null;
   if (_IGNORE_FILES.has(path)) return null;
-
+  // What the app lists in `app.dev.watch` is watched, a dotfile (`.graphqlrc`) included.
   if (watch.restart?.some((entry) => _matchesEntry(path, entry))) return "restart";
   if (watch.rebuild?.some((entry) => _matchesEntry(path, entry))) return "rebuild";
+  if (path.startsWith(".")) return null;
 
   if (_BACKEND.some((prefix) => path.startsWith(prefix) || path === prefix.replace(/\/$/, ""))) {
     return "restart";

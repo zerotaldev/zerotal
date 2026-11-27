@@ -360,7 +360,11 @@ export class ServeCommand extends Command {
     // one you are looking at.
     this.line(`  Zerotal v${ZEROTAL_VERSION}  ›  ${mode}`);
     this.newLine();
-    this._route("Local", `http://localhost:${port}`);
+    // Bound to one address of the network (`--host 192.168.1.20`), localhost does not answer.
+    const wildcard = host === "0.0.0.0" || host === "::" || host === "[::]";
+    if (host === undefined || wildcard || _isLoopback(host)) {
+      this._route("Local", `http://localhost:${port}`);
+    }
     if (network !== null) this._route("Network", network);
     this.newLine();
   }

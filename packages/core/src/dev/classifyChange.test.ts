@@ -65,6 +65,9 @@ describe("_classifyChange()", () => {
     expect(_classifyChange("data/en/terms.json", watch)).toBe("restart");
     expect(_classifyChange("data/en/terms.txt", watch)).toBeNull();
     expect(_classifyChange("resources/svg/logo.svg", watch)).toBe("rebuild");
+    // A dotfile the app lists is watched; one it does not list is not.
+    expect(_classifyChange(".graphqlrc", { restart: [".graphqlrc"] })).toBe("restart");
+    expect(_classifyChange(".graphqlrc", watch)).toBeNull();
     // Not a way to watch inside an ignored directory.
     expect(_classifyChange("node_modules/x.json", { restart: ["node_modules/"] })).toBeNull();
   });

@@ -167,8 +167,14 @@ export default InertiaConfig({
 });
 ```
 
-The gate is never consulted on a development machine — a gate that can lock you
-out of your own laptop is a gate that gets switched off.
+On a development machine, requests from that machine never ask the gate — a gate
+that can lock you out of your own laptop is a gate that gets switched off. Every
+other request does. The dev server listens on every network interface, so another
+device on your network is refused unless the gate lets it in, and so is a request
+whose `Host` is not a loopback name, which is how a page on another site would
+reach the API through your browser. A gate that throws is a refusal.
+`DELETE /_inertia/devtools/entries` also refuses a request sent by a web page on
+another site; the browser extension and command-line clients are unaffected.
 
 ## How it works
 

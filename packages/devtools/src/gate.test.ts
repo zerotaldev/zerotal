@@ -72,6 +72,28 @@ describe("devtoolsAuthorized", () => {
     expect(await devtoolsAuthorized(request())).toBe(true);
   });
 
+  it("refuses another device on the network in development, unless the gate allows it", async () => {
+    // The dev server listens on every interface, and the traces hold reset links.
+    setEnv("development");
+    const lan = new Request("http://192.168.0.131:3000/__zerotal/devtools/api/traces");
+    expect(await devtoolsAuthorized(lan, "192.168.0.20")).toBe(false);
+    expect(await devtoolsAuthorized(request(), "192.168.0.20")).toBe(false);
+
+    withConfig({ gate: (r) => r.headers.get("X-Debug-Key") === "phone" });
+    const phone = new Request(lan.url, { headers: { "X-Debug-Key": "phone" } });
+    expect(await devtoolsAuthorized(phone, "192.168.0.20")).toBe(true);
+  });
+
+  it("refuses a local connection that names another site in development", async () => {
+    // A page that points its own domain at 127.0.0.1 makes the developer's browser
+    // connect locally, but still sends its domain as Host.
+    setEnv("development");
+    const rebound = new Request("http://localhost:3000/__zerotal/devtools/api/traces", {
+      headers: { host: "evil.example:3000" },
+    });
+    expect(await devtoolsAuthorized(rebound, "127.0.0.1")).toBe(false);
+  });
+
   it("refuses when the inspector is on outside development with no gate", async () => {
     // The absence of a decision is not permission.
     setEnv("production");
@@ -110,9 +132,9 @@ describe("devtoolsAuthorized", () => {
 });
 
 describe("the endpoints behind the gate", () => {
-  async function hit(url: string): Promise<Response | undefined> {
+  async function hit(url: string, init: RequestInit = {}): Promise<Response | undefined> {
     _setTraceStore(new TraceStore({ dbPath: null }));
-    const ctx = HttpContext.fake(url);
+    const ctx = HttpContext.fake(url, init);
     const mw = new DevtoolsInjectionMiddleware();
     let out: Response | undefined;
     await RequestContext.run(ctx, async () => {
@@ -128,6 +150,8 @@ describe("the endpoints behind the gate", () => {
     "http://localhost/__zerotal/devtools/sse",
     "http://localhost/__zerotal/devtools/api/traces",
     "http://localhost/__zerotal/devtools/api/channels",
+    // The routes and the resolved config.
+    "http://localhost/__zerotal/devtools/api/map",
     "http://localhost/__zerotal/devtools/client.js",
     "http://localhost/__zerotal/devtools/dashboard.js",
     // The hashed bundles too: under the same prefix, so behind the same gate.
@@ -156,6 +180,28 @@ describe("the endpoints behind the gate", () => {
     setEnv("development");
     const res = await hit("http://localhost/__zerotal/devtools/api/traces");
     expect(res?.status).toBe(200);
+  });
+
+  it("refuses them to a request naming another host in development", async () => {
+    setEnv("development");
+    for (const url of ENDPOINTS.map((u) => u.replace("localhost", "192.168.0.131"))) {
+      expect((await hit(url))?.status).toBe(404);
+    }
+  });
+
+  it("refuses the clear action from a page on another site", async () => {
+    // The developer's own browser, sent there by another site: it passes the
+    // local check, and only the Origin header tells it apart.
+    setEnv("development");
+    const clear = "http://localhost/__zerotal/devtools/api/clear";
+    const foreign = await hit(clear, {
+      method: "POST",
+      headers: { origin: "http://evil.example" },
+    });
+    expect(foreign?.status).toBe(403);
+
+    const own = await hit(clear, { method: "POST", headers: { origin: "http://localhost" } });
+    expect(own?.status).toBe(204);
   });
 
   it("leaves application routes alone", async () => {

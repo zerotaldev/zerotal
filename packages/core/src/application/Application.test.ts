@@ -1117,6 +1117,39 @@ describe("Application.start() — fetch handler and health endpoint", () => {
     expect(res).toBeUndefined(); // Upgrade succeeded
   });
 
+  it("refuses a dev WebSocket opened by a page on another site", async () => {
+    // The socket carries a failed build's file paths and source lines. A handshake is exempt
+    // from the same-origin policy, so without this any open page could read them.
+    const app = Application.create({ env: "web" });
+    app.enableDevWs();
+    let capturedFetch: ((req: Request, srv: unknown) => Promise<Response | undefined>) | undefined;
+    (Bun as unknown as Record<string, unknown>).serve = (opts: Record<string, unknown>) => {
+      capturedFetch = opts["fetch"] as typeof capturedFetch;
+      return fakeServer;
+    };
+    await app.start(0);
+
+    let upgraded = false;
+    const fakeSrv = {
+      upgrade: () => {
+        upgraded = true;
+        return true;
+      },
+    };
+    const handshake = (origin: string) =>
+      new Request("http://localhost:3000/__dev/ws", {
+        headers: { Upgrade: "websocket", Origin: origin },
+      });
+
+    const refused = await capturedFetch!(handshake("http://evil.example"), fakeSrv);
+    expect(refused?.status).toBe(403);
+    expect(upgraded).toBe(false);
+
+    const own = await capturedFetch!(handshake("http://localhost:3000"), fakeSrv);
+    expect(own).toBeUndefined();
+    expect(upgraded).toBe(true);
+  });
+
   it("serves the live-reload script as a file while the dev socket is on, and not otherwise", async () => {
     // A same-origin file is what lets a strict CSP (`script-src 'self'`) keep live-reload.
     const { _DEV_RELOAD_SCRIPT_PATH, _DEV_RELOAD_SOURCE } = await import("../dev/reloadClient.ts");

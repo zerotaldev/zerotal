@@ -55,7 +55,13 @@ import type {
 } from "./RequestTrace.ts";
 import { traceStore } from "./TraceStore.ts";
 import { captureCallSite, parseStack } from "./callsite.ts";
-import { redactBindings, redactCacheKey, redactValue, type RedactionOptions } from "./redaction.ts";
+import {
+  isSensitiveName,
+  redactBindings,
+  redactCacheKey,
+  redactValue,
+  type RedactionOptions,
+} from "./redaction.ts";
 
 // ── Per-context event buffers ─────────────────────────────────────────────────
 // Events are buffered for the full request lifetime (including phases that run
@@ -288,8 +294,41 @@ const NEVER_HEADERS = new Set(["cookie", "set-cookie", "authorization", "proxy-a
 function _recordHeader(name: string): boolean {
   const key = name.toLowerCase();
   if (NEVER_HEADERS.has(key)) return false;
-  return SAFE_HEADERS.has(key) || _extraHeaders.has("*") || _extraHeaders.has(key);
+  if (SAFE_HEADERS.has(key) || _extraHeaders.has(key)) return true;
+  // `"*"` opens every header *except* the ones whose name says they hold a secret —
+  // `x-api-key`, `x-csrf-token` — which is what the setting has always promised. A
+  // header named on its own is recorded whatever its name: that is a choice, not a
+  // wildcard catching something nobody looked at.
+  // Hyphens read as underscores, so `x-api-key` meets the list's `api_key`.
+  return _extraHeaders.has("*") && !isSensitiveName(key.replace(/-/g, "_"), _redaction);
 }
+
+/**
+ * The path as recorded, with the value of a sensitive route parameter masked.
+ *
+ * The URL is a request's values too: `/verify-email/:token` carries the token in the
+ * path, and a trace is kept on disk for a day. Only a segment the route declares as
+ * a parameter is masked — a literal segment is the app's own text, not a value.
+ */
+function _recordedPath(path: string, pattern: string | undefined): string {
+  if (!pattern || _redaction.enabled === false) return path;
+  const names = pattern.split("/");
+  const values = path.split("/");
+  if (names.length !== values.length) return path;
+  let changed = false;
+  const out = values.map((value, i) => {
+    const name = names[i] ?? "";
+    if (!name.startsWith(":") || !value) return value;
+    const param = name.slice(1).replace(/\?$/, "");
+    if (!isSensitiveName(param, _redaction)) return value;
+    changed = true;
+    return REDACTED;
+  });
+  return changed ? out.join("/") : path;
+}
+
+/** What a masked value is replaced with — the same marker the redaction walk uses. */
+const REDACTED = "‹redacted›";
 
 const INTERNAL_PREFIXES = ["/__flow/", "/__zerotal/", "/__dev/"];
 
@@ -340,10 +379,13 @@ function _buildTrace(
   exception: ExceptionInfo | null,
   method?: string,
 ): RequestTrace {
-  const queryParams: Record<string, string> = {};
+  // Masked by name like any other recorded field: `?token=` on a reset link and the
+  // `signature` on a signed URL are as much a secret as the same value in a form.
+  const rawQuery: Record<string, string> = {};
   ctx.url.searchParams.forEach((v, k) => {
-    queryParams[k] = v;
+    rawQuery[k] = v;
   });
+  const queryParams = redactValue(rawQuery, _redaction) as Record<string, string>;
 
   const headers: Record<string, string> = {};
   ctx.request.headers.forEach((v, k) => {
@@ -372,7 +414,7 @@ function _buildTrace(
     id: crypto.randomUUID().slice(0, 12),
     requestId: ctx.requestId,
     method: (method ?? ctx.request.method).toUpperCase(),
-    path: ctx.url.pathname,
+    path: _recordedPath(ctx.url.pathname, rd?.pattern),
     statusCode: ctx.response?.status ?? 0,
     startMs,
     durationMs,

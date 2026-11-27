@@ -4,7 +4,7 @@
  * A trace does not stay on screen: it is streamed to the browser and written to
  * `.zerotal/devtools.sqlite`, where it sits for a day. What it carries is the
  * request's actual values — the password on a registration, a reset token, a
- * session payload, every customer email a listing selects by. An ephemeral dev
+ * session payload, the signature on a signed link. An ephemeral dev
  * panel and a plaintext file with a day's worth of credentials in it are
  * different risks, so those values are masked by default and you opt individual
  * names back in.

@@ -1,5 +1,6 @@
 import type { NextFn, HttpContext } from "@zerotal/core";
-import { BaseMiddleware, tryCurrentApp } from "@zerotal/core";
+import { BaseMiddleware, config, tryCurrentApp } from "@zerotal/core";
+import { isAllowedOrigin } from "@zerotal/core/http";
 import { traceStore } from "./TraceStore.ts";
 import { traceChannels } from "./tracing.ts";
 import { devtoolsAuthorized, devtoolsSettings } from "./enabled.ts";
@@ -43,6 +44,15 @@ export interface DevtoolsInjectionOptions {
 
 /** Everything the inspector serves lives under here, and is gated as one thing. */
 const DEVTOOLS_PREFIX = "/__zerotal/devtools";
+
+/** Methods that read. Anything else changes state and must come from this app's own pages. */
+const _SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+/** The extra origins the app allows (`app.allowedOrigins`), for an app served under several. */
+function _origins(): string[] {
+  const listed = config.safe<{ allowedOrigins?: unknown }>("app", {}).allowedOrigins;
+  return Array.isArray(listed) ? listed.filter((o): o is string => typeof o === "string") : [];
+}
 
 // ── SSE subscribers ───────────────────────────────────────────────────────────
 
@@ -137,10 +147,17 @@ export class DevtoolsInjectionMiddleware extends BaseMiddleware<DevtoolsInjectio
     // are gated together and before anything is read — checking per endpoint is
     // how one of them ends up ungated.
     if (pathname.startsWith(DEVTOOLS_PREFIX)) {
-      if (!(await devtoolsAuthorized(http.request))) {
+      if (!(await devtoolsAuthorized(http.request, http.ip()))) {
         // 404, not 403: outside development the honest answer to an
         // unauthenticated stranger is that there is nothing here.
         return new Response("Not Found", { status: 404 });
+      }
+      // A request that changes something must come from a page of this app. A page on
+      // any other site can send one from the developer's own browser, which passes the
+      // check above — it is the developer's machine asking — and the browser would let
+      // it through without reading the answer.
+      if (!_SAFE_METHODS.has(http.request.method) && !isAllowedOrigin(http.request, _origins())) {
+        return new Response("Forbidden origin.", { status: 403 });
       }
     }
 
@@ -255,7 +272,7 @@ async function _markPage(http: HttpContext, response: Response): Promise<Respons
 
   // Same gate as the endpoints: a marker on a page whose viewer could not use
   // the endpoints anyway would only advertise that they are there.
-  if (!(await devtoolsAuthorized(http.request))) return response;
+  if (!(await devtoolsAuthorized(http.request, http.ip()))) return response;
 
   const html = await response.text();
   // The body is written afresh either way, so the original's `Content-Length` no longer

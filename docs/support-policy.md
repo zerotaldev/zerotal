@@ -147,12 +147,14 @@ dependency order, from CI. Never mix versions across packages.
   laptop.
 - **Cadence:** patches ship when they are ready. Breaking changes are batched onto
   a calendar: at most one minor a quarter, released in January, April or October,
-  and the major each July. A quarter with no break to ship gets no minor. Security
-  fixes are released out of band — see the response windows in
+  and the major each July. A quarter with no break to ship gets no minor. The
+  calendar starts once 1.19.0 has shipped; every minor up to and including 1.19.0
+  ships when its break is ready. Security fixes are released out of band — see the
+  response windows in
   [SECURITY.md](https://github.com/zerotaldev/zerotal/blob/main/SECURITY.md).
-- **Supported versions:** each line is supported for a fixed window after its
-  successor ships, and the July major is a long-term-support line. The windows are
-  in [Support windows](#support-windows) below.
+- **Supported versions:** from 1.19, each line is supported for a fixed window after
+  its successor ships, and the July major is a long-term-support line. The windows
+  are in [Support windows](#support-windows) below.
 
 ## Support windows
 
@@ -171,11 +173,11 @@ an upgrade can be planned against them rather than guessed at.
   [SECURITY.md](https://github.com/zerotaldev/zerotal/blob/main/SECURITY.md).
 - **A critical fix** is a defect that loses or corrupts data, or stops an app
   booting or serving requests, with no workaround in the app's own code.
-- **A fix on an older line** ships as a patch on that line — 1.17.5, say — from a
-  `1.17.x` branch, through the same release workflow and gates as every release.
-  It is published under the npm dist-tag `release-1.17`, so `latest` never moves
-  back to an older line. A tilde range already takes it (`~1.17.0`), or install it
-  by tag: `bun add zerotal@release-1.17`.
+- **A fix on an older line** ships as a patch on that line — 1.19.4, say — from a
+  `1.19.x` branch, through the same release workflow and gates as every release.
+  It is published under the npm dist-tag `release-1.19`, so `latest` never moves
+  back to an older line. A tilde range already takes it (`~1.19.0`), or install it
+  by tag: `bun add zerotal@release-1.19`.
 - **An LTS line** is the July major and its patches — 2.0.x. A later minor, 2.1.0
   in October, carries breaking changes as usual; an app that would rather not take
   them stays on 2.0.x and gets its fixes for two years.
@@ -187,23 +189,25 @@ year take ordinary bug fixes; every other line takes security and critical fixes
 alone. That is a load one maintainer can carry, which is the test these windows were
 set against.
 
-The windows start with 1.17. Lines superseded before this policy was published are
-not covered: an app on 1.16 or older should upgrade to 1.17 or later to be inside
-one.
+The windows start with 1.19. Until 1.19.0 ships, fixes land on the newest release
+only and nothing is backported: an app on an older version gets a fix by upgrading.
+Lines superseded before then, 1.18 included, are not covered. An earlier version of
+this page started the windows at 1.17; on 27 November 2026 the start moved to 1.19,
+and 1.17 gets no backports.
 
-| Line             | Gets              | Until                                 |
-| ---------------- | ----------------- | ------------------------------------- |
-| 1.18.x           | Every fix         | 1.19.0 ships, not before January 2027 |
-| 1.17.x           | Security fixes    | 26 May 2027                           |
-| 1.16.x and older | Nothing — upgrade |                                       |
+| Line             | Gets              | Until        |
+| ---------------- | ----------------- | ------------ |
+| 1.18.x           | Every fix         | 1.19.0 ships |
+| 1.17.x and older | Nothing — upgrade |              |
 
-The next breaking releases are on the calendar:
+The next breaking releases:
 
-| Release | When         | What                                                  |
-| ------- | ------------ | ----------------------------------------------------- |
-| 1.19.0  | January 2027 | A breaking minor, if there is a break to ship         |
-| 1.20.0  | April 2027   | A breaking minor, if there is a break to ship         |
-| 2.0.0   | July 2027    | The major, and the first LTS — supported to July 2029 |
+| Release        | When             | What                                                  |
+| -------------- | ---------------- | ----------------------------------------------------- |
+| 1.19.0         | When it is ready | The first line the windows cover                      |
+| The next minor | January 2027     | A breaking minor, if there is a break to ship         |
+| The one after  | April 2027       | A breaking minor, if there is a break to ship         |
+| 2.0.0          | July 2027        | The major, and the first LTS — supported to July 2029 |
 
 ## Maturity levels
 

@@ -18,13 +18,14 @@ semver:
   Safe to take at any time.
 - **Minor** (`x.Y.z`) — a breaking change. Always labelled **BREAKING** in the
   [Release Notes](/docs/changelog), with the reason and the migration steps, and
-  given its own section on this page. At most one a quarter, released in January,
-  April or October.
+  given its own section on this page. Once 1.19.0 has shipped, at most one a
+  quarter, released in January, April or October.
 - **Major** (`X.y.z`) — an annual consolidation, cut each July, and a
   long-term-support line that gets fixes for two years. The next is 2.0, in July 2027.
 
-How long each line gets fixes is set out in
-[Support windows](/docs/support-policy#support-windows).
+How long each line gets fixes, from 1.19 on, is set out in
+[Support windows](/docs/support-policy#support-windows). Until 1.19.0 ships, fixes
+land on the newest release only.
 
 Why not strict semver: a framework this young corrects itself often, and under
 strict semver every correction is a major. A version line that reaches 9.0 in its

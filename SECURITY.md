@@ -44,15 +44,17 @@ exploitable), and reports that require a maliciously modified local environment.
 
 ## Supported versions
 
-Security fixes land on the newest minor, on each earlier minor for six months after
-its successor ships, on the last minor before a major for twelve months after the
-major, and on each July major, the long-term-support line, for two years. A fix on
-an older line ships as a patch on that line under the npm dist-tag
+Until 1.19.0 ships, security fixes land on the newest release only and nothing is
+backported: upgrade to get a fix.
+
+From 1.19, security fixes land on the newest minor, on each earlier minor for six
+months after its successor ships, on the last minor before a major for twelve months
+after the major, and on each July major, the long-term-support line, for two years.
+A fix on an older line ships as a patch on that line under the npm dist-tag
 `release-<major>.<minor>`. See [Support windows](docs/support-policy.md#support-windows)
 for the full rule.
 
-| Version | Supported                       |
-| ------- | ------------------------------- |
-| 1.18.x  | Yes                             |
-| 1.17.x  | Security fixes until 2027-05-26 |
-| < 1.17  | No                              |
+| Version | Supported |
+| ------- | --------- |
+| 1.18.x  | Yes       |
+| < 1.18  | No        |

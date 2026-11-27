@@ -13,6 +13,7 @@
 import type { Component } from "./Component.ts";
 import type { Snapshot } from "./types.ts";
 import type { HttpContext } from "@zerotal/core";
+import { currentUserId } from "@zerotal/core/auth";
 import { verifySnapshot, applySnapshotData, stripPendingSecrets } from "./dehydrate.ts";
 
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000; // 24h
@@ -189,10 +190,10 @@ function _randomSid(): string {
 function _resolveKey(page: Component, ctx: HttpContext, scope: "user" | "session"): string | null {
   const comp = page.constructor.name;
   const routePath = page._flowPath || "/";
-  const userId = (ctx as unknown as { user?: { id?: unknown } }).user?.id;
+  const userId = currentUserId(ctx);
 
-  if (scope === "user" && userId != null) {
-    return `flow:durable:u:${String(userId)}:${routePath}:${comp}`;
+  if (scope === "user" && userId !== undefined) {
+    return `flow:durable:u:${userId}:${routePath}:${comp}`;
   }
   // Session id (user scope with no user → fall back here; or explicit session scope).
   const session = _session(ctx);

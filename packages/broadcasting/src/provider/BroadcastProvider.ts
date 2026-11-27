@@ -13,6 +13,7 @@ import type { BroadcastEvent } from "../types.ts";
 import { BroadcastConfig, validateBroadcastConfig } from "../config.ts";
 import type { BroadcastConfigShape } from "../config.ts";
 import { frameworkLog } from "@zerotal/core/logger";
+import { currentUser } from "@zerotal/core/auth";
 
 declare module "@zerotal/core" {
   interface ContainerBindings {
@@ -150,10 +151,7 @@ function _makeNativeAuthController(manager: BroadcastManager) {
         return;
       }
 
-      const auth = await channelRegistry.authorize(
-        channelName,
-        (http as unknown as { user?: unknown }).user,
-      );
+      const auth = await channelRegistry.authorize(channelName, currentUser(http));
       if (!auth.matched) {
         http.json({ error: `No authorization rule registered for channel "${channelName}".` }, 403);
         return;
@@ -197,10 +195,7 @@ function _makePusherAuthController(manager: PusherCompatManager) {
 
       // Authorize via the routes/channels.ts rules. The authenticated user is whatever the
       // app's auth middleware put on the request (undefined for guests -> denied).
-      const auth = await channelRegistry.authorize(
-        channelName,
-        (http as unknown as { user?: unknown }).user,
-      );
+      const auth = await channelRegistry.authorize(channelName, currentUser(http));
       if (!auth.matched) {
         http.json({ error: `No authorization rule registered for channel "${channelName}".` }, 403);
         return;

@@ -4,6 +4,7 @@
  * later attached to routes or checked manually as `ThrottleMiddleware`.
  */
 import type { HttpContext } from "../pipeline/HttpContext.ts";
+import { currentUserId } from "../auth/currentUser.ts";
 import { ThrottleMiddleware, _clientIp, _markIpDerived } from "./ThrottleMiddleware.ts";
 import type { ThrottleOptions } from "./ThrottleMiddleware.ts";
 
@@ -187,9 +188,8 @@ function _resolverFor(
       // Marked, because the *unauthenticated* half of this keys on an address —
       // which is the half a rate limiter on a login form exists for.
       return _markIpDerived((ctx) => {
-        const user = (ctx as unknown as Record<string, unknown>).user as
-          { id?: number } | undefined;
-        return user?.id !== undefined ? `user:${user.id}` : `ip:${_clientIp(ctx, trustedProxies)}`;
+        const id = currentUserId(ctx);
+        return id !== undefined ? `user:${id}` : `ip:${_clientIp(ctx, trustedProxies)}`;
       });
 
     case "apiKey": {

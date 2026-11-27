@@ -327,6 +327,37 @@ return ctx.json({ email: ctx.user.email });
 The resolver that loads the user from the session id is configured from your
 registered auth model — see [Authentication](/docs/authentication).
 
+### Reading the user without the auth package
+
+`ctx.user` is typed by `@zerotal/auth`, so code that does not import it — a package, a shared
+helper, middleware of your own — reads the user with `currentUser()` from `@zerotal/core/auth`
+instead of casting the context:
+
+```typescript fragment
+import { currentUser, currentUserId } from "@zerotal/core/auth";
+
+const user = currentUser(ctx); // typed as your User once @zerotal/auth is loaded; undefined for a guest
+const key = currentUserId(ctx); // the id as a string, for a cache key or an ownership check
+```
+
+Both read the request being handled when called with no argument. The type comes from
+`UserRegistry`, which `@zerotal/auth` fills with its `UserModel`, so binding your `User` to
+`UserModel` (see [Bind the type](/docs/authentication#bind-the-type-a-required-step)) types
+`currentUser()` too. An app that sets its own user on the request, without `@zerotal/auth`,
+registers that type the same way:
+
+```typescript fragment
+declare module "@zerotal/core" {
+  interface UserRegistry {
+    user: Account;
+  }
+}
+```
+
+`user` is deliberately not declared on core's `HttpContext`, so an app that declares its own
+`user` field there keeps it. `@zerotal/core/auth` is server-only; nothing a browser bundle
+imports reaches it.
+
 ## Client IP
 
 ```typescript fragment

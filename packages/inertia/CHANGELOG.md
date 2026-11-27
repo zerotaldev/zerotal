@@ -29,6 +29,11 @@ follows the Zerotal monorepo's unified versioning.
   refuses `.` and `..`, a parameter whose name is not an identifier, a catch-all, a `--page`
   that is not a page name, and a URL another route file already serves, in any group.
 
+### Changed
+
+- The shared `auth.user` prop reads the signed-in user with `currentUser()` from
+  `@zerotal/core/auth` instead of casting the request context.
+
 ## [1.18.4] — 2026-11-27
 
 ### Security

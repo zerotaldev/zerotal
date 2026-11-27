@@ -962,6 +962,14 @@ interface ThrottleOptions = {
   windowSeconds?: number | undefined
 }
 
+interface UserIdentity = {
+  id?: unknown
+}
+
+interface UserRegistry = {
+  user: UserModel
+}
+
 interface ViewRegistration = {
   name: (routeName: string) => ViewRegistration
   withLayout: (layout: ViewLayout) => ViewRegistration
@@ -993,6 +1001,8 @@ type ArgDef = {    name: string;    required?: boolean;    default?: string;}
 type BindingToken = ClassToken<T> | AbstractToken<T> | keyof ContainerBindings
 
 type ControllerResponse = void | ResponseBuilder | MarkdownBuilder
+
+type CurrentUser = UserModel & UserIdentity
 
 type DeepPartial = { [K in keyof T]?: (NonNullable<T[K]> extends _Atomic ? T[K] : NonNullable<T[K]> extends object ? DeepPartial<NonNullable<T[K]>> : T[K]) | undefined; }
 
@@ -1045,6 +1055,22 @@ function asset = (path: string) => string
 function assetVersion = () => string
 
 function setAssetVersion = (version: string) => void
+
+## ./auth  `(./src/auth/index.ts)`
+
+function currentUser = (ctx?: HttpContext | null | undefined) => CurrentUser | undefined
+
+function currentUserId = (ctx?: HttpContext | null | undefined) => string | undefined
+
+interface AuthenticatedUser = {}
+
+interface UserIdentity = {
+  id?: unknown
+}
+
+interface UserRegistry = {}
+
+type CurrentUser = UserModel & UserIdentity
 
 ## ./build  `(./src/build/index.ts)`
 

@@ -399,9 +399,12 @@ decides what that can see:
 | `redis`            | another machine                         |
 | `memory`           | nothing — it is private to each process |
 
-On `memory` the check **stands aside and says so** rather than reporting a missing
-worker. A check that cried wolf on every app using the memory driver is one people would
-learn to skip, and then it would not be there for the case it exists for.
+On `memory`, or with no cache at all, the check **stands aside and says so** rather than
+reporting a missing worker. A check that cried wolf on every app using the memory driver is
+one people would learn to skip, and then it would not be there for the case it exists for.
+The exception is production: with `app.env` set to a production name, "cannot verify" is a
+warning, naming the command to run, because a deploy that forgot the worker looks exactly
+like this. It is still a warning, not a failure, so `zt doctor` exits 0.
 
 ### Reading it yourself
 

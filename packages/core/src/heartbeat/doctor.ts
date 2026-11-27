@@ -9,6 +9,18 @@
  */
 import type { DoctorCheck, DoctorCheckResult } from "../doctor/AppDoctor.ts";
 import { Heartbeat, type BeatLookup } from "./Heartbeat.ts";
+import type { Application } from "../application/Application.ts";
+import { isProdLike } from "../support/env.ts";
+
+/** Whether the app under check says it is a production deployment (`app.env`). */
+function _isProduction(app: Application | undefined): boolean {
+  try {
+    const config = app?.container.makeSync("config") as { get(key: string): unknown } | undefined;
+    return isProdLike(String(config?.get("app.env") ?? ""));
+  } catch {
+    return false;
+  }
+}
 
 /** How a lookup reads in a report. */
 export function describeBeat(lookup: BeatLookup): string {
@@ -67,14 +79,15 @@ export interface WorkerLivenessOptions {
  * ran for weeks with no scheduled task executing. Registered and *stale* is a
  * warning, because a worker that checked in an hour ago and not since may be
  * mid-restart. And "cannot tell" is reported as ok with the reason attached,
- * never as a finding, because a check that cries wolf on the memory cache driver
- * is one people learn to skip.
+ * because a check that cries wolf on the memory cache driver is one people learn
+ * to skip — except in production, where work registered with no way to see a
+ * worker is a warning: a deploy that forgot the worker looks exactly like this.
  */
 export function workerLivenessCheck(options: WorkerLivenessOptions): DoctorCheck {
   return {
     id: options.id,
     label: options.label,
-    async run(): Promise<DoctorCheckResult> {
+    async run(app?: Application): Promise<DoctorCheckResult> {
       const work = await options.hasWork();
       if (!work.has) {
         return { status: "ok", message: work.idle ?? "nothing registered, nothing to run" };
@@ -83,6 +96,17 @@ export function workerLivenessCheck(options: WorkerLivenessOptions): DoctorCheck
       const seen = await Heartbeat.lastSeen(options.name);
 
       if (seen.status === "unknown") {
+        if (_isProduction(app)) {
+          return {
+            status: "warn",
+            message:
+              `${work.summary}, and nothing shows a worker is running them — cannot verify: ` +
+              `${seen.reason}. In production a missing worker means the work silently never happens.`,
+            fix:
+              `Make sure \`${options.command}\` runs beside the web server. To let this check see ` +
+              `it, give the app a cache every process shares (not the in-memory driver), where the worker checks in.`,
+          };
+        }
         return { status: "ok", message: `${work.summary} — cannot verify: ${seen.reason}` };
       }
 
